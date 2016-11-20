@@ -52,6 +52,7 @@ mod required {
     }
 
     #[test]
+    #[ignore]
     fn make_error() {
         // Make a thread that shares some mutable data that has a Drop that
         // frees memory. Then use replace_with with a panicking function. The
