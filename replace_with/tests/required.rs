@@ -50,5 +50,21 @@ mod required {
         assert_expected_eq_actual!(x, expected);
         mem::drop(x);   // Takes ownership of x.
     }
+
+    #[test]
+    fn make_error() {
+
+        use std::thread;
+        use std::sync::Mutex;
+        use std::sync::Arc;
+        let data = Arc::new(Mutex::new(vec![1]));
+
+        let _ = thread::spawn(move || {
+            use std::ops::DerefMut;
+            let mut val = data.lock().unwrap();
+            let mut dataref = val.deref_mut();;
+            replace_with(dataref, |_| panic!());
+        }).join();
+    }
 }
 
