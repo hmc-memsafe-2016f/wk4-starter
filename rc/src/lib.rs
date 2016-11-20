@@ -39,10 +39,6 @@ impl<T> Clone for MyRc<T> {
         }
         MyRc{d: self.d}
     }
-
-    fn clone_from(&mut self, source: &Self) {
-        *self = source.clone();
-    }
 }
 
 impl<T> Drop for MyRc<T> {
