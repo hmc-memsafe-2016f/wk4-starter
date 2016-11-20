@@ -53,6 +53,11 @@ mod required {
 
     #[test]
     fn make_error() {
+        // Make a thread that shares some mutable data that has a Drop that
+        // frees memory. Then use replace_with with a panicking function. The
+        // panic will stop the replace_with halfway through and cause the value
+        // to be left in an unstable state. Then when we try to destruct the
+        // original vector, we get a segmentation fault.
 
         use std::thread;
         use std::sync::Mutex;
