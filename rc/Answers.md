@@ -1,8 +1,8 @@
-1. In the `consume` function, if we read pointer `self.core` with `ptr::read`
-instead of getting a reference the thing it points to, we will end up moving
-out of the `Option<T>` that we coppied instead of the one on the heap. This
+1. In the `consume` function, if we read the pointer `self.core` with `ptr::read`
+instead of getting a reference to the thing it points to, we will end up moving
+out of the `Option<T>` that we coppied onto the stack instead of out of the one on the heap. This
 will cause the `T` to be `drop()`ed twice: once in the caller to consume, and
-once in `MyRc::drop()`, i.e. we created a double delete.
+once in `MyRc::drop()`. We created a double delete.
 I know this works because I originally had this bug in my code before I was
 storing the value in an `Option`.
 
