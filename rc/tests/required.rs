@@ -18,6 +18,7 @@ mod required {
     use my_rc::MyRc;
     use std::cell::Cell;
     use std::rc::Rc;
+    use my_rc::MyRefCounter;
 
     #[test]
     fn new_exists() {
