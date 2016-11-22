@@ -1,6 +1,7 @@
 use std::cell::Cell;
 use std::ops::Deref;
 use std::fmt::{self,Debug};
+use std::ptr;
 use std::mem;
 
 pub struct MyRc<T> {
@@ -14,10 +15,7 @@ pub struct MyWeak<T> {
 struct RcHeap<T> {
     strong_count: Cell<usize>,
     weak_count: Cell<usize>,
-    // This is not the right way to do this, but it allows use to avoid using allocators directly.
-    // The model we're using for this assignment is that all allocation is done with boxes and
-    // deallocation is done with boxes, permenantly entagling deallocation and destrcutors.
-    data: *mut T,
+    data: T,
 }
 
 impl<T> MyRc<T> {
@@ -26,7 +24,7 @@ impl<T> MyRc<T> {
             ptr: Box::into_raw(Box::new(RcHeap {
                  strong_count: Cell::new(1usize),
                  weak_count: Cell::new(0usize),
-                 data: Box::into_raw(Box::new(t)),
+                 data: t,
             }))
         }
     }
@@ -34,9 +32,9 @@ impl<T> MyRc<T> {
         unsafe {
             if (*self.ptr).strong_count.get() == 1 {
                 self.dec_strong();
-                let res = Ok(*Box::from_raw((*self.ptr).data));
+                let res = Ok(ptr::read(&(*self.ptr).data as *const _));
                 if (*self.ptr).weak_count.get() == 0 {
-                    Box::from_raw(self.ptr);
+                    mem::forget(Box::from_raw(self.ptr).data);
                 }
                 mem::forget(self);
                 res
@@ -79,7 +77,7 @@ impl<T> Deref for MyRc<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
         unsafe {
-            & *(*self.ptr).data
+            & (*self.ptr).data
         }
     }
 }
@@ -96,9 +94,10 @@ impl<T> Drop for MyRc<T> {
         unsafe {
             self.dec_strong();
             if (*self.ptr).strong_count.get() == 0 {
-                Box::from_raw((*self.ptr).data);
                 if (*self.ptr).weak_count.get() == 0 {
                     Box::from_raw(self.ptr);
+                } else {
+                    ptr::read(&(*self.ptr).data as *const _);
                 }
             }
         }
@@ -145,7 +144,7 @@ impl<T> Drop for MyWeak<T> {
         unsafe {
             self.dec_weak();
             if (*self.ptr).strong_count.get() == 0 && (*self.ptr).weak_count.get() == 0 {
-                Box::from_raw(self.ptr);
+                mem::forget(Box::from_raw(self.ptr).data);
             }
         }
     }
