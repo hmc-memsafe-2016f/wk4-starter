@@ -72,5 +72,13 @@ mod required {
             replace_with(dataref, |_| panic!());
         }).join();
     }
+
+    #[test]
+    #[ignore]
+    fn make_simple_error() {
+        // I made this one after looking at the unsound branch
+        let mut x = Box::new(5);
+        replace_with(&mut x, |_| panic!());
+    }
 }
 
