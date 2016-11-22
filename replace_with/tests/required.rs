@@ -2,6 +2,19 @@ extern crate replace_with;
 
 pub use replace_with::replace_with;
 
+// This macro is an assertion with nicely formatted failure output
+macro_rules! assert_expected_eq_actual {
+    ($a:expr, $b:expr) => ({
+        let (a, b) = (&$a, &$b);
+        assert!(*a == *b,
+                "\nExpected `{:?}` is not equal to Actual `{:?}`\nAssertion: `assert_expected_eq_actual!({}, {})`",
+                *a,
+                *b,
+                stringify!($a),
+                stringify!($b));
+    })
+}
+
 mod required {
 
     use super::replace_with;
@@ -11,13 +24,16 @@ mod required {
     #[test]
     fn simple_type() {
         let mut x = Box::new(6);
+        assert_expected_eq_actual!(*x, 6);
         replace_with(&mut x, |mut b: Box<i32>| {
             *b += 1;
             b
         });
+        assert_expected_eq_actual!(*x, 7);
         mem::drop(x);   // Takes ownership of x.
     }
 
+    #[derive(Debug,PartialEq)]
     enum Tree {
         Leaf(i32),
         Fork(Box<Tree>, Box<Tree>),
@@ -26,9 +42,13 @@ mod required {
     #[test]
     fn complex_type() {
         let mut x = Tree::Leaf(0);
+        assert_expected_eq_actual!(x, Tree::Leaf(0));
         replace_with(&mut x, |t: Tree| {
             Tree::Fork(Box::new(t), Box::new(Tree::Leaf(1)))
         });
+        let expected = Tree::Fork(Box::new(Tree::Leaf(0)), Box::new(Tree::Leaf(1)));
+        assert_expected_eq_actual!(x, expected);
         mem::drop(x);   // Takes ownership of x.
     }
 }
+
