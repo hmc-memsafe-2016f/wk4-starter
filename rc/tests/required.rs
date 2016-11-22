@@ -93,12 +93,9 @@ mod required {
         let d = {
             let rc = MyRc::new(D { d_count: d_count.clone() });
             assert_expected_eq_actual!(0, d_count.get());
-            print!("asdf1:{}", d_count.get());
             let x = rc.consume();
-            print!("asdf2:{}", d_count.get());
             x
         };
-        print!("asdf3:{}", d_count.get());
         assert_expected_eq_actual!(0, d_count.get());
     }
 }
