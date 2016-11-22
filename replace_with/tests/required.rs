@@ -31,4 +31,13 @@ mod required {
         });
         mem::drop(x);   // Takes ownership of x.
     }
+
+    #[test]
+    #[ignore]
+    fn safe_memory_error() {
+        use std::rc::Rc;
+        let data = vec![1];
+        let mut val = Rc::new(data);
+        replace_with(&mut val, |_| panic!());
+    }
 }
