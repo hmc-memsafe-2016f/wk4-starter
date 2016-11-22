@@ -1,5 +1,4 @@
 [package]
 name = "replace_with"
 version = "0.1.0"
-authors = ["Alex Ozdemir <aozdemir@hmc.edu>"]
-
+authors = ["Dan Obermiller <dobermiller16@cmc.edu>", "Alex Ozdemir <aozdemir@hmc.edu>"]
