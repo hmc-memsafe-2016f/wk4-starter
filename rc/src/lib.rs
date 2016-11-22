@@ -1,7 +1,10 @@
 //Julien Chien <jchien17@cmc.edu>
 
+use std::mem;
+use std::ops::Deref;
+
 pub struct MyRc<T> {
-  ptr: *mut Data<t>
+  ptr: *mut Data<T>
 }
 
 struct Data<T> {
@@ -12,13 +15,12 @@ struct Data<T> {
 impl<T> MyRc<T> {
   pub fn new(t: T) -> MyRc<T> {
     let data = Data{ data: t, count: 1 };
-    MyRc{ ptr: Box::into_raw(data) }
+    MyRc{ ptr: Box::into_raw(Box::new(data)) }
   }
 
   pub fn consume(self) -> Result<T, MyRc<T>> {
     unsafe {
       if (*self.ptr).count == 1 {
-        let val = std::ptr::read(self.data);
         let uninit: Data<T> = mem::uninitialized();
         let t = std::ptr::replace(self.ptr, uninit);
         mem::forget(self);
@@ -28,6 +30,7 @@ impl<T> MyRc<T> {
       } else {
         Err(self)
       }
+    }
   }
 }
 
@@ -47,13 +50,15 @@ impl<T> Clone for MyRc<T> { // Make a new `MyRc` to the same underlying data
       (*self.ptr).count += 1
     }
     MyRc{ptr: self.ptr}
+  }
 }
 
 impl<T> Drop for MyRc<T> {
   fn drop(&mut self) {
     unsafe {
       if (*self.ptr).count == 1 {
-        Box::from_raw(self.ptr)
+        //unused variable warning for lol
+        let lol = Box::from_raw(self.ptr);
       } else {
         (*self.ptr).count -= 1
       }
