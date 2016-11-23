@@ -1,0 +1,55 @@
+By changing the way that we update the value of the refcount when something gets dropped, we can break things pretty easily (this might have been what my first attempt looked like, before I actually thought about it). Drop would look like:
+impl<T> Drop for MyRc<T> {
+    fn drop(&mut self) {
+        match unsafe{*self.refcount} {
+            1 => unsafe {
+                    Box::from_raw(self.ptr);
+                    Box::from_raw(self.refcount);
+                },
+            _ => unsafe{self.refcount = Box::into_raw(Box::new(*self.refcount - 1))},
+        }
+    }
+}
+
+Which works finefor the folowing code:
+let keep = {
+    let rc = MyRc::new(5);
+    rc.consume()
+};
+println!("{}", keep.is_ok());
+
+But breaks horribly for:
+let keep = {
+    let rc = MyRc::new(5);
+        {
+            let rc2 = rc.clone();
+        }
+    rc.consume()
+};
+println!("{}", keep.is_ok());
+
+Since consume() will never give us an OK if we've ever cloned the RC.
+
+---
+
+By changing the match condition in drop so that the heap memory is deallocated when there are still valid references to it, we can get the rc type to break. The incorrect implementation of drop would look like:
+impl<T> Drop for MyRc<T> {
+    fn drop(&mut self) {
+        match unsafe{std::ptr::read(self.refcount)} {
+            2 => unsafe {
+                    Box::from_raw(self.ptr);
+                    Box::from_raw(self.refcount);
+                },
+            _ => unsafe{std::ptr::write(self.refcount, std::ptr::read(self.refcount) - 1)},
+        }
+    }
+}
+
+We can then run the following code:
+let rc = MyRc::new(5);
+{
+    let rc2 = rc.clone();
+}
+println!("{}", *rc);
+
+And although we don't get an error, we do NOT get 5 when we dereference rc.
