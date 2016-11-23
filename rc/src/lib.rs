@@ -25,7 +25,6 @@ impl<T> MyRc<T> {
       }
     }
   }
-
 }
 
 impl<T> Deref for MyRc<T> {
@@ -50,8 +49,8 @@ impl<T> Drop for MyRc<T> {
   fn drop(&mut self) {
     unsafe {
       if *self.count == 1 {
-        let boxed_data = Box::from_raw(self.data);
-        let boxed_counter = Box::from_raw(self.count);
+        Box::from_raw(self.data);   // convert back to boxes
+        Box::from_raw(self.count);  // so destructors will run
       } else {
         *self.count -= 1;
       }
