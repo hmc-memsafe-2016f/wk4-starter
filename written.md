@@ -10,5 +10,6 @@ means that if it is dereferenced, there would be a memory error (the underlying 
 
 2. Describe a way to break MyRc by changing something outside an unsafe block of function.
 
-
+If the `new` is changed so that MyRc is not initialized with a count of 1 (say, with a count of
+2 or 0 instead), it can potentially cause memory problems, as too many or not enough drops have happened.
 
