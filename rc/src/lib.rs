@@ -19,6 +19,7 @@ impl<T> MyRc<T> {
     unsafe {
       if *self.count == 1 {
         let t: T = ptr::read(self.data);
+        *self.count += 1;
         Ok(t)
       } else {
         Err(self)
@@ -48,11 +49,10 @@ impl<T> Clone for MyRc<T> {
 impl<T> Drop for MyRc<T> {
   fn drop(&mut self) {
     unsafe {
-      if *self.count == 1 {
+      *self.count -= 1;
+      if *self.count == 0 {
         Box::from_raw(self.data);   // convert back to boxes
         Box::from_raw(self.count);  // so destructors will run
-      } else {
-        *self.count -= 1;
       }
     }
   }
