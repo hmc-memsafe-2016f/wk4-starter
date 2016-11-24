@@ -19,6 +19,7 @@ impl<T> MyRc<T> {
     unsafe {
       if *self.count == 1 {
         let t: T = ptr::read(self.data);
+        // This will prevent us from dropping the data twice
         *self.count += 1;
         Ok(t)
       } else {
@@ -49,8 +50,8 @@ impl<T> Clone for MyRc<T> {
 impl<T> Drop for MyRc<T> {
   fn drop(&mut self) {
     unsafe {
-      *self.count -= 1;
-      if *self.count == 0 {
+      *self.count -= 1;         // one fewer reference
+      if *self.count == 0 {     // if it was the last one:
         Box::from_raw(self.data);   // convert back to boxes
         Box::from_raw(self.count);  // so destructors will run
       }
