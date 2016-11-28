@@ -1,3 +1,6 @@
+use std::ptr;
+use std::mem;
+
 pub struct MyRc<T> {
     d: *mut RcData<T>,
 }
@@ -10,7 +13,7 @@ pub struct MyWeak<T> {
 //  deleted
 // Once strongcount == 0 and weakcount == 0, this data structure will be deleted
 struct RcData<T> {
-    data: *mut T,
+    data: T,
     strongcount: usize,
     weakcount: usize,
 }
@@ -18,19 +21,16 @@ struct RcData<T> {
 impl<T> MyRc<T> {
     pub fn new(t: T) -> MyRc<T> {
         MyRc{d: Box::into_raw(Box::new(
-                    RcData{data: Box::into_raw(Box::new(t)),
-                           strongcount: 1, weakcount: 0}))}
+                    RcData{data: t, strongcount: 1, weakcount: 0}))}
     }
 
     pub fn consume(self) -> Result<T, MyRc<T>> {
         unsafe {
             if (*self.d).strongcount == 1 {
                 (*self.d).strongcount = 0;
-                // This moves data out (and frees the heap-allocated memory).
-                // RcData is not deleted, but since self is dropped at the end
-                // of this function, the Drop will delete RcData if weakcount is
-                // 0.
-                Ok(*Box::from_raw((*self.d).data))
+                // Copy the data out, but don't drop anything. Since strongcount
+                // is 0, we know not to drop data later
+                Ok(ptr::read(&(*self.d).data))
             } else {
                 Err(self)
             }
@@ -50,7 +50,7 @@ impl<T> std::ops::Deref for MyRc<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
         unsafe {
-            &*(*self.d).data
+            &(*self.d).data
         }
     }
 }
@@ -68,7 +68,7 @@ impl<T> Drop for MyRc<T> {
         unsafe {
             // If this was the last strong reference, delete the actual data
             if (*self.d).strongcount == 1 {
-                Box::from_raw((*self.d).data);
+                ptr::drop_in_place(&mut (*self.d).data);
             }
 
             // We have one fewer strong count
@@ -78,7 +78,8 @@ impl<T> Drop for MyRc<T> {
                 (*self.d).strongcount -= 1;
             }
             if (*self.d).strongcount == 0 && (*self.d).weakcount == 0 {
-                Box::from_raw(self.d);
+                let RcData{data, strongcount:_, weakcount:_} = *Box::from_raw(self.d);
+                mem::forget(data);
             }
         }
     }
@@ -103,7 +104,8 @@ impl<T> Drop for MyWeak<T> {
         unsafe {
             (*self.d).weakcount -= 1;
             if (*self.d).weakcount == 0 && (*self.d).strongcount == 0 {
-                Box::from_raw(self.d);
+                let RcData{data, strongcount:_, weakcount:_} = *Box::from_raw(self.d);
+                mem::forget(data);
             }
         }
     }
