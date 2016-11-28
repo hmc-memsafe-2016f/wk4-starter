@@ -67,17 +67,16 @@ impl<T> Drop for MyRc<T> {
     fn drop(&mut self) {
         unsafe {
             // If this was the last strong reference, delete the actual data
-            if (*self.d).strongcount == 1 {
+            let sc = &mut (*self.d).strongcount;
+            if *sc == 1 {
                 ptr::drop_in_place(&mut (*self.d).data);
             }
 
             // We have one fewer strong count
             // This could be 0 if we were just consumed, and subtracting again
             // would lead to underflow
-            if (*self.d).strongcount > 0 {
-                (*self.d).strongcount -= 1;
-            }
-            if (*self.d).strongcount == 0 && (*self.d).weakcount == 0 {
+            *sc = sc.saturating_sub(1);
+            if *sc == 0 && (*self.d).weakcount == 0 {
                 let RcData{data, strongcount:_, weakcount:_} = *Box::from_raw(self.d);
                 mem::forget(data);
             }
