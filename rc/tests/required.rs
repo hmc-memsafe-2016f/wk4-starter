@@ -1,3 +1,6 @@
+#![feature(alloc_system)]
+extern crate alloc_system;
+
 extern crate my_rc;
 
 // This macro is an assertion with nicely formatted failure output
