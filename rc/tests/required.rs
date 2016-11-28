@@ -76,7 +76,7 @@ mod required {
     }
 
     #[test]
-    fn destrutors_run() {
+    fn destructors_run() {
         let d_count = Rc::new(Cell::new(0));
         {
             let rc = MyRc::new(D { d_count: d_count.clone() });
@@ -90,7 +90,7 @@ mod required {
     }
 
     #[test]
-    fn destrutors_and_consume() {
+    fn destructors_and_consume() {
         let d_count = Rc::new(Cell::new(0));
         let d = {
             let rc = MyRc::new(D { d_count: d_count.clone() });
