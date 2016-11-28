@@ -50,5 +50,35 @@ mod required {
         assert_expected_eq_actual!(x, expected);
         mem::drop(x);   // Takes ownership of x.
     }
+
+    #[test]
+    #[ignore]
+    fn make_error() {
+        // Make a thread that shares some mutable data that has a Drop that
+        // frees memory. Then use replace_with with a panicking function. The
+        // panic will stop the replace_with halfway through and cause the value
+        // to be left in an unstable state. Then when we try to destruct the
+        // original vector, we get a segmentation fault.
+
+        use std::thread;
+        use std::sync::Mutex;
+        use std::sync::Arc;
+        let data = Arc::new(Mutex::new(vec![1]));
+
+        let _ = thread::spawn(move || {
+            use std::ops::DerefMut;
+            let mut val = data.lock().unwrap();
+            let mut dataref = val.deref_mut();;
+            replace_with(dataref, |_| panic!());
+        }).join();
+    }
+
+    #[test]
+    #[ignore]
+    fn make_simple_error() {
+        // I made this one after looking at the unsound branch
+        let mut x = Box::new(5);
+        replace_with(&mut x, |_| panic!());
+    }
 }
 
