@@ -21,6 +21,7 @@ mod required {
     use my_rc::MyRc;
     use std::cell::Cell;
     use std::rc::Rc;
+    use my_rc::MyRefCounter;
 
     #[test]
     fn new_exists() {
@@ -95,7 +96,8 @@ mod required {
         let d = {
             let rc = MyRc::new(D { d_count: d_count.clone() });
             assert_expected_eq_actual!(0, d_count.get());
-            rc.consume()
+            let x = rc.consume();
+            x
         };
         assert_expected_eq_actual!(0, d_count.get());
     }
