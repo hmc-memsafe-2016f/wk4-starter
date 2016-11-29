@@ -1,0 +1,68 @@
+The unsound code in the repository passes a reference to a struct containing a pointer to a 5 on the heap to replace_with.
+
+replace_with coerces this to a pointer to a struct containing a pointer to a 5 on the heap, then sends a struct with a pointer to the same 5 on the heap to sad by ptr::read-ing it. Because we plan to move the result of sad into the place where the struct currently lives, displacing it *without* destructing it, there's no problem with creating a second struct which holds a raw pointer to the 5 on the heap which will deallocate the memory when we destruct it - that's the behavior we want it to exhibit when it goes out of scope, once it's in place replacing the original struct.
+
+If the data on the heap is freed while the struct that we've created by ptr::read()-ing the pointer replace_with creates still holds a pointer to the same data, on the other hand, we're kind of screwed. We can see this behavior by, for example, rewriting sad as:
+
+fn sad<T>(t: MyBox<usize>) -> MyBox<usize> {
+    let val = t.ptr;
+    mem::drop(t);
+    MyBox{
+        ptr: val,
+    }
+}
+
+This is pretty transparently broken, given the drop implementation:
+
+impl<T> Drop for MyBox<T> {
+    fn drop(&mut self) {
+        unsafe {
+            Box::from_raw(self.ptr);
+        }
+    }
+}
+
+We can see how the MyBox we created in sad above can't be safely destroyed ever. In fact, the sad function:
+
+fn sad<T>(t: MyBox<T>) -> MyBox<T> {
+    MyBox{
+        ptr: t.ptr,
+    }
+}
+
+Is just as broken, since t goes out of scope and dies at the end of sad, so that when the box that we've ptr::write-ed to goes out of scope, it tries to Box::from_raw on invalid memory.
+
+However, an implementation of sad that *reads* the data, such as:
+
+fn sad<T>(t: MyBox<T>) -> MyBox<T> {
+    MyBox{
+        ptr: unsafe{Box::into_raw(Box::new(ptr::read(t.ptr)))},
+    }
+}
+
+Will work just fine, even though the destructor is called twice, since the destructors deallocate different areas of heap memory which store identical values (or at least do the equivalent).
+
+Likewise, an implementation that mutates (or doesn't) the original and then yields it back also works fine, because no struct ever goes out of scope. For example,
+
+fn sad<T>(item: T) -> T {
+    item
+}
+
+Is perfectly legitimate, albeit useless.
+
+All of this related to the original sad function because when we panic!(), we have to clean up our messy thread, which involves calling the destructors of all currently existing objects. Take a look at the provided function:
+
+fn sad<T>(_: T) -> T {
+    panic!()
+}
+
+When this is called, we have the original struct, a mutable reference to which we've passed to replace_with, and we have the struct that we created when we ptr::read-ed the raw pointer to the original. Then we panic before we can ptr::write, and Rust tries to destroy two structs that currently hold references to the same location on the heap - and trying to destroy the second one when it exits wat causes a segfault.
+
+We can write a function similar to sad that DOES work - all we have to do is forget the struct we pass it. This means that a replace_with implementation that divides by zero, for example, can still be OK.
+
+fn sad<T>(item: T) -> T {
+    mem::forget(item);
+    panic!()
+}
+
+Does the job just fine. We still panic, but we don't segfault. And because we know that the struct we're calling replace_with on DOES exist, we're guaranteed not to leak (so long as panic!() runs its destructor like it should).
